@@ -41,34 +41,34 @@ st.markdown(
 # Definimos la función de carga de datos
 def load_data():
     df = pd.read_csv("Datos_limpios_Berlin.csv", index_col="last_scraped")
-    df = df.drop("Unnamed: 0", axis=1)
+    df = df.drop(["Unnamed: 0"], axis=1)
 
-    # # Selecciono las columnas tipo numéricas del dataframe
-    # numeric_df = df.select_dtypes(['float','int']) # Devuelve las columnas
-    # numeric_cols = numeric_df.columns # Devuekve lista de columnas
+     # Selecciono las columnas tipo numéricas del dataframe
+    numeric_df = df.select_dtypes(['float','int']) # Devuelve las columnas
+    numeric_cols = numeric_df.columns # Devuekve lista de columnas
 
-    # # Selecciono las columnas tipo texto
-    # text_df = df.select_dtypes(['object']) # Seleccionamos los datos tipo cadena (objeto)
-    # text_cols = text_df.columns # Mostramos las columnas
+    # Selecciono las columnas tipo texto
+    text_df = df.select_dtypes(['object']) # Seleccionamos los datos tipo cadena (objeto)
+    text_cols = text_df.columns # Mostramos las columnas
 
-    # # # Selecciono algunas columnas categoricas de valores
-    # categorical_column_bookable = df['instant_bookable']
+    # Selecciono algunas columnas categoricas de valores
+    categorical_column_room = df['room_type']
 
-    # # Obtengo los valores unicos
-    # unique_categories_bookable = categorical_column_bookable.unique()
+    # Obtengo los valores unicos
+    unique_categories_room = categorical_column_room.unique()
 
     # Seleccionamos todas las columnas del dataset
-    cols = df.select_dtypes(['float','int','object'])
-    cols_columns = cols.columns # Mostramos las columnas
+    # cols = df.select_dtypes(['float','int','object'])
+    # cols_columns = cols.columns # Mostramos las columnas
 
 
 
-    # return df, numeric_cols, text_cols, unique_categories_bookable, numeric_df
-    return df, cols, cols_columns
+    return df, numeric_cols, text_cols, unique_categories_room, numeric_df
+    # return df, cols, cols_columns
 
 # Cargo los datos obtenidos de la funcion "load_data()"
-#df, numeric_cols, text_cols,  unique_categories_bookable, numeric_df = load_data()
-df, cols, cols_columns = load_data()
+df, numeric_cols, text_cols,  unique_categories_room, numeric_df = load_data()
+# df, cols, cols_columns = load_data()
 
 #Creacion del dashboard
 
@@ -150,17 +150,17 @@ if View == "Modelado Explicativo":
 
     # Widget 3
     # Generamos un cuadro de multiselección (Y) para seleccionar variables a graficar
-    #numerics_vars_selected = st.sidebar.multiselect(label="Variables graficales: ", options = numeric_cols)
-    variables = st.sidebar.multiselect(label="Variables a graficar (Y)", options= cols_columns)
+    numerics_vars_selected = st.sidebar.multiselect(label="Variables graficales: ", options = numeric_cols)
+    # variables = st.sidebar.multiselect(label="Variables a graficar (Y)", options= cols_columns)
 
     # Widget 3 Selectbox
     # Menu desplegable de opciones de la variable categórica seleccionada
-    #category_selected = st.sidebar.selectbox(label="Categorias variable instant_bookable", options= unique_categories_bookable)
-    variables1 = st.sidebar.multiselect(label="Variables a graficar (X)", options= cols_columns)
+    category_selected = st.sidebar.selectbox(label="Categorias variable room_type", options= unique_categories_room)
+    # variables1 = st.sidebar.multiselect(label="Variables a graficar (X)", options= cols_columns)
 
 
-    # # Widget 4: Button
-    # # Generamos un button (Button) en la barra lateral (sidebar) para mostrar las variables tipo texto
+    # Widget 4: Button
+    # Generamos un button (Button) en la barra lateral (sidebar) para mostrar las variables tipo texto
     # Button = st.sidebar.button(label="Mostrar variables string")
 
     # # Condicional para que aparezca el dataframe
@@ -170,29 +170,35 @@ if View == "Modelado Explicativo":
 
 #Graph 1: LINEPLOT
 # Despliqgue de unn lineplot, definiendo las variables "X caytegóricas" y "Y numéricas"
-    # data = df[df['instant_bookable'] == category_selected]
-    # data_features = data[numerics_vars_selected]
+    data = df[df['room_type'] == category_selected]
+    data_features = data[numerics_vars_selected]
     # figure1 = px.line(data_frame=data_features, x=data_features.index,
-    #                     y=numerics_vars_selected, title=str('Instant bookable'),
+    #                     y=numerics_vars_selected, title=str('Room type'),
     #                     width=1600, height=600)
-     
+    
 
+    figure1 = px.bar(data_frame=data_features, x=data_features.index,
+                        y=numerics_vars_selected, 
+                        title='Room type: ' + str(category_selected),
+                        width=1600, height=600)
+    
+    st.plotly_chart(figure1)
     #Condicional para que aparezca la grafica
     # Si se presiona el botón y se han seleccionado variables
-    if mostrar_lineplot:
-        if variables1 and variables:
-            for x_var in variables1:
-                fig = px.line(
-                    data_frame=df,
-                    x=x_var,
-                    y=variables,
-                    title=f'Lineplot: {", ".join(variables)} vs {x_var}',
-                    width=1000,
-                    height=500
-                )
-                st.plotly_chart(fig)
-        else:
-            st.warning("Selecciona al menos una variable para X y Y.")
+    # if mostrar_lineplot:
+    #     if variables1 and variables:
+    #         for x_var in variables1:
+    #             fig = px.line(
+    #                 data_frame=df,
+    #                 x=x_var,
+    #                 y=variables,
+    #                 title=f'Lineplot: {", ".join(variables)} vs {x_var}',
+    #                 width=1000,
+    #                 height=500
+    #             )
+    #             st.plotly_chart(fig)
+    #     else:
+    #         st.warning("Selecciona al menos una variable para X y Y.")
 
     # Generamos el Contenido de la vista 2
 elif View == "Modelado Predictivo":
