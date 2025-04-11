@@ -5,6 +5,7 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as mt
 import seaborn as sns
+from sklearn.linear_model import LinearRegression
 
 # Aplicamos estilos con CSS
 st.markdown(
@@ -57,18 +58,12 @@ def load_data():
     # Obtengo los valores unicos
     unique_categories_room = categorical_column_room.unique()
 
-    # Seleccionamos todas las columnas del dataset
-    # cols = df.select_dtypes(['float','int','object'])
-    # cols_columns = cols.columns # Mostramos las columnas
-
-
 
     return df, numeric_cols, text_cols, unique_categories_room, numeric_df
     # return df, cols, cols_columns
 
 # Cargo los datos obtenidos de la funcion "load_data()"
 df, numeric_cols, text_cols,  unique_categories_room, numeric_df = load_data()
-# df, cols, cols_columns = load_data()
 
 #Creacion del dashboard
 
@@ -109,11 +104,27 @@ if View == "Modelado Explicativo":
     # Widget extra: botón para mostrar frecuencias de todas las variables
     freq_button = st.sidebar.checkbox(label="Mostrar frecuencias de cada variable", key="freq_button")
     # # Generamos un button (Button) en la barra lateral (sidebar) para mostrar el linplot
-    mostrar_lineplot = st.sidebar.button(label="Mostrar grafica tipo lineplot", key="mostrar_lineplot")
+    
+    # Widgets de selección
+    text_var_selected = st.sidebar.selectbox(label="Variables tipo texto: ", options=text_cols)
+    numerics_var_selected = st.sidebar.selectbox(label="Variables numéricas", options=numeric_cols)
 
-    # Mostrar imagen y descripción solo si no están activados los checkboxes
-    if not check_box and not freq_button and not mostrar_lineplot:
-        st.image("https://media.istockphoto.com/id/486804588/es/vector/edificios-de-la-ciudad-de-berl%C3%ADn.jpg?s=612x612&w=0&k=20&c=I-3dwZC2-iLNZWN3mcLxTwbhTBP9LGHb5og7LmozGjs=",
+    # Botón para mostrar la gráfica
+    mostrar_barplot = st.sidebar.button(label="Mostrar grafica de barras", key="mostrar_barplot")
+
+    # Mostrar gráfica solo si se presionó el botón
+    if mostrar_barplot and text_var_selected:
+        figure1 = px.bar(data_frame=df, 
+                        x=df[text_var_selected],  # tomar solo una si hay varias
+                        y=df[numerics_var_selected],
+                        title='Gráfico de Barras')
+        figure1.update_xaxes(automargin=True)
+        figure1.update_yaxes(automargin=True)
+        st.plotly_chart(figure1)
+
+    # Mostrar imagen y descripción solo si NO se presionó el botón
+    elif not mostrar_barplot and not check_box and not freq_button:
+        st.image("https://img.freepik.com/premium-vector/cartoon-vector-scene-berlin-white-background_873925-450716.jpg?w=2000",
                 caption="Vista de Berlín", use_container_width=True)
 
         st.markdown("""
@@ -122,6 +133,7 @@ if View == "Modelado Explicativo":
         y su combinación única de lo moderno con lo histórico. Desde la Puerta de Brandeburgo hasta el Muro de Berlín, 
         la ciudad ofrece una experiencia única tanto para residentes como visitantes.
         """)
+
 
     # Si se presiona el botón, generamos la tabla de frecuencias
     if freq_button:
@@ -146,60 +158,6 @@ if View == "Modelado Explicativo":
             # Línea separadora
             st.markdown("---")
 
-
-
-    # Widget 3
-    # Generamos un cuadro de multiselección (Y) para seleccionar variables a graficar
-    numerics_vars_selected = st.sidebar.multiselect(label="Variables graficales: ", options = numeric_cols)
-    # variables = st.sidebar.multiselect(label="Variables a graficar (Y)", options= cols_columns)
-
-    # Widget 3 Selectbox
-    # Menu desplegable de opciones de la variable categórica seleccionada
-    category_selected = st.sidebar.selectbox(label="Categorias variable room_type", options= unique_categories_room)
-    # variables1 = st.sidebar.multiselect(label="Variables a graficar (X)", options= cols_columns)
-
-
-    # Widget 4: Button
-    # Generamos un button (Button) en la barra lateral (sidebar) para mostrar las variables tipo texto
-    # Button = st.sidebar.button(label="Mostrar variables string")
-
-    # # Condicional para que aparezca el dataframe
-    # if Button:
-    #     #Mostramos el dataset
-    #     st.write(text_cols)
-
-#Graph 1: LINEPLOT
-# Despliqgue de unn lineplot, definiendo las variables "X caytegóricas" y "Y numéricas"
-    data = df[df['room_type'] == category_selected]
-    data_features = data[numerics_vars_selected]
-    # figure1 = px.line(data_frame=data_features, x=data_features.index,
-    #                     y=numerics_vars_selected, title=str('Room type'),
-    #                     width=1600, height=600)
-    
-
-    figure1 = px.bar(data_frame=data_features, x=data_features.index,
-                        y=numerics_vars_selected, 
-                        title='Room type: ' + str(category_selected),
-                        width=1600, height=600)
-    
-    st.plotly_chart(figure1)
-    #Condicional para que aparezca la grafica
-    # Si se presiona el botón y se han seleccionado variables
-    # if mostrar_lineplot:
-    #     if variables1 and variables:
-    #         for x_var in variables1:
-    #             fig = px.line(
-    #                 data_frame=df,
-    #                 x=x_var,
-    #                 y=variables,
-    #                 title=f'Lineplot: {", ".join(variables)} vs {x_var}',
-    #                 width=1000,
-    #                 height=500
-    #             )
-    #             st.plotly_chart(fig)
-    #     else:
-    #         st.warning("Selecciona al menos una variable para X y Y.")
-
     # Generamos el Contenido de la vista 2
 elif View == "Modelado Predictivo":
         st.markdown("""
@@ -223,24 +181,97 @@ elif View == "Modelado Predictivo":
         # Mostramos el mapa de calor
         if check_box1:
 
-            # Encontramos todas las correlaciones entre las variables
-            Corr_Factors = df.select_dtypes(include=['number']).corr()
+            correlaciones_checkbox = st.checkbox(label="Mapa de calor", key="correlaciones_checkbox")
+            modelo = st.checkbox(label="Modelo", key="modelo")
 
-            # Encontramos el valor absoluto de todas las correlaciones entre las variables
-            Corr_Factors1 = abs(Corr_Factors)
+            if correlaciones_checkbox:
 
-            # Crear figura y mapa de calor
-            fig, ax = mt.subplots(figsize=(16,10))
-            sns.heatmap(Corr_Factors1, cmap='Blues', annot=True, fmt='.2f', ax=ax)
+                # Encontramos todas las correlaciones entre las variables
+                Corr_Factors = df.select_dtypes(include=['number']).corr()
 
-            # Mostrar en Streamlit
-            st.subheader("Correlaciones entre las variables (Mapa de calor)")
-            st.pyplot(fig)
+                # Encontramos el valor absoluto de todas las correlaciones entre las variables
+                Corr_Factors1 = abs(Corr_Factors)
+
+                # Crear figura y mapa de calor
+                fig, ax = mt.subplots(figsize=(16,10))
+                sns.heatmap(Corr_Factors1, cmap='Blues', annot=True, fmt='.2f', ax=ax)
+
+                # Mostrar en Streamlit
+                st.subheader("Correlaciones entre las variables (Mapa de calor)")
+                st.pyplot(fig)
+            
+            if modelo:
+
+                var_indep = st.selectbox(label="Variable independiente", options=numeric_cols, key="var_indep")
+                var_dep = st.selectbox(label="Variable dependiente", options=numeric_cols, key="var_dep")
+
+                model = LinearRegression()
+
+                # Entrenamos el modelo con las variables independientes (X) y la variable dependiente (y)
+                #model.fit(X=df[var_indep], y=df[var_dep])
+                model.fit(X=df[[var_indep]], y=df[var_dep])
+
+                # Evaluamos la eficiencia del modelo obtenido por medio del coeficiente R = Determinacion
+                # coef_det = model.score(df[var_indep],df[var_dep])
+                coef_det = model.score(df[[var_indep]], df[var_dep])
+                st.write(f"**Coeficiente de determinación (R²):** {coef_det:.4f}")
+                # Determinamos el coeficiente de correlación
+                coef_Correl = np.sqrt(coef_det)
+                st.write(f"**Coeficiente de correlación (R):** {coef_Correl:.4f}")
+
+                # Predecimos los valores de la variable dep a partir de la var indep (nos da las predicciones, numero igual de filas)
+                y_pred= model.predict(X=df[[var_indep]])
+                
+                # values_predictions = y_pred
+                # Crear DataFrame para visualización con predicciones
+                pred_df = df.copy()
+                pred_df['Predicciones'] = y_pred
+
+                # Mostrar tabla con valores reales y predichos
+                st.write("### Valores reales vs Predicciones")
+                st.dataframe(pred_df[[var_dep, 'Predicciones']])
+
+                # Gráfico comparativo (Seaborn)
+                st.write("### Gráfico de regresión")
+                fig, ax = mt.subplots(figsize=(10, 5))
+                sns.scatterplot(x=var_indep, y=var_dep, data=pred_df, color="blue", label="Real", ax=ax)
+                sns.lineplot(x=var_indep, y='Predicciones', data=pred_df, color="red", label="Predicción", ax=ax)
+                st.pyplot(fig)
+
+                
+
+                # Gráfico interactivo (Plotly)
+                # st.write("### Gráfico de dispersión interactivo")
+                # x_selected = st.sidebar.selectbox(label="X (para gráfica interactiva)", options=numeric_cols, key="x_disp")
+                # y_selected = st.sidebar.selectbox(label="Y (para gráfica interactiva)", options=numeric_cols, key="y_disp")
+
+                # figure2 = px.scatter(data_frame=df, x=x_selected, y=y_selected, title='Gráfico de Dispersión')
+                # st.plotly_chart(figure2)
+
+                # # Visualizamos la grafica comparativa entre el total real y el total predecido
+                # sns.scatterplot(x='host_acceptance_rate', y='price', color="blue", data=entire)
+                # sns.lineplot(x='host_acceptance_rate', y='Predicciones', color="red", data=entire)
+
+                # # Mostramos una tabla con las predicciones y el valor real
+
+                # # Insertamos la columna de predicciones en el DataFrame, a un lado de la variable dependiente
+                # entire.insert(32, 'Predicciones', y_pred)
+
+                # # Mostramos las predicciones junto a la variable a predecir
+                # entire[["Predicciones", "price"]]
+
+
+                # #GRAPH 2 SCATTERPLOT
+                # x_selected = st.sidebar.selectbox(label="x", options=numeric_cols)
+                # y_selected = st.sidebar.selectbox(label="y", options=numeric_cols)
+                # figure2 = px.scatter(data_frame=numeric_df, x=x_selected, y=y_selected,
+                #                         title='Dispersiones')
+                # st.plotly_chart(figure2)
 
 
         # Mostrar imagen y descripción solo si no están activados los checkboxes
         if not check_box1 and not check_box2 and not check_box3:
-            st.image("https://media.istockphoto.com/id/486804588/es/vector/edificios-de-la-ciudad-de-berl%C3%ADn.jpg?s=612x612&w=0&k=20&c=I-3dwZC2-iLNZWN3mcLxTwbhTBP9LGHb5og7LmozGjs=",
+            st.image("https://img.freepik.com/premium-vector/cartoon-vector-scene-berlin-white-background_873925-450716.jpg?w=2000",
                     caption="Vista de Berlín", use_container_width=True)
 
             st.markdown("""
