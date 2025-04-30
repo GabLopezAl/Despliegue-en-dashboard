@@ -64,12 +64,15 @@ def load_data():
     # Obtengo los valores unicos
     unique_categories_room = categorical_column_room.unique()
 
+    # Codificar variables categóricas (One-Hot Encoding)
+    df_encoded = pd.get_dummies(df, drop_first=True)
 
-    return df, numeric_cols, text_cols, unique_categories_room, numeric_df
+    return df, df_encoded, numeric_cols, text_cols, unique_categories_room, numeric_df
+
     # return df, cols, cols_columns
 
 # Cargo los datos obtenidos de la funcion "load_data()"
-df, numeric_cols, text_cols,  unique_categories_room, numeric_df = load_data()
+df, df_encoded, numeric_cols, text_cols, unique_categories_room, numeric_df = load_data()
 
 #Creacion del dashboard
 
@@ -85,7 +88,30 @@ st.sidebar.markdown("""
     """, unsafe_allow_html=True)
 st.sidebar.title("DASHBOARD")
 st.sidebar.subheader("Panel de selección")
-View = st.sidebar.selectbox(label="Opciones", options=["Modelado Explicativo","Modelado Predictivo"])
+View = st.sidebar.selectbox(label="Opciones", options=["Información","Modelado Explicativo","Modelado Predictivo"])
+
+if View == "Información":
+    st.title("Bienvenido a Berlín")
+    
+    # Mostrar imagen de Berlín
+    st.image("logo.jpg", 
+             caption="Vista panorámica de Berlín",  width=800)
+
+    # Mostrar una breve descripción
+    st.markdown("""
+    Localización y sitio: 
+La ciudad de Berlín está situada en el noroeste de Alemania, a orillas de los ríos Spree y Havel. Es la capital de la República Federal de Alemania y uno de los 16 Estados federales. Con sus más de 3,4 millones de habitantes, es la urbe más poblada de Alemania y la mayor de la Unión Europea.
+
+Hay en Berlín tres diferentes sitios del Patrimonio Mundial: los “Palacios y Parques de Potsdam y de Berlín” fueron los primeros en ser inscritos en la Lista del Patrimonio Mundial.  Esta propiedad fue ampliada dos veces, en primer lugar en 1992, y luego en 1999 – año en que también fue inscrita la Museumsinsel (Isla de los Museos). Asimismo, las seis Ciudades del Modernismo de Berlín adquirieron el estatus de Patrimonio Mundial en 2008.
+    
+Referencias históricas: 
+Ciudad jardín Falkenberg (1913-1916). Los arquitectos fueron Bruno Taut y Heinrich Tessenow, y el paisajista, Ludwig Lesser;
+Ciudad Schillerpark (1924-1930/1953-1957) concebida por los arquitectos Bruno Taut y Hans Hoffmann; su paisajista fue Walter Rossow);
+Ciudad Britz (1925-1930), diseñada por los arquitectos Bruno Taut y Martin Wagner; complementada por los paisajistas Leberecht Migge y Ottokar Wagler);
+Conjunto Carl Legien (1928-1930), cuyos arquitectos fueron Bruno Taut y Franz Hillinger);
+White City (1929-1931, proyectada por los arquitectos Otto Rudolf Salvisberg, Bruno Ahrends y Wilhelm Büning. Su paisajista fue Ludwig Lesser;
+Conjunto Siemensstadt (1929-1930), obra de los arquitectos Otto Bartning, Fred Forbart, Walter Gropius, Hugo Häring, Paul-Rudolf Henning y Hans Scharoun, y del paisajista Leberecht Migge).
+    """)
 
 
 # Contenido de la vista 1
@@ -213,6 +239,87 @@ elif View == "Modelado Predictivo":
             sns.scatterplot(x=var_indep, y=var_dep, data=pred_df, color="blue", label="Real", ax=ax)
             sns.lineplot(x=var_indep, y='Predicciones', data=pred_df, color="red", label="Predicción", ax=ax)
             st.pyplot(fig)
+
+        if check_box2:
+            st.subheader("Regresión Lineal Múltiple")
+
+            # Selección de variables independientes (múltiples)
+            selected_features = st.multiselect(
+                label="Selecciona variables independientes",
+                options=numeric_cols,
+                default=numeric_cols[:2],
+                key="multivar_indep"
+            )
+
+            var_dep_multiple = st.selectbox(
+                label="Selecciona variable dependiente",
+                options=numeric_cols,
+                key="multivar_dep"
+            )
+
+            if selected_features:
+                model_mult = LinearRegression()
+
+                X = df_encoded[selected_features]
+                y = df_encoded[var_dep_multiple]
+                model_mult.fit(X, y)
+
+
+                # Entrenamos el modelo
+                #model_mult.fit(X=df[selected_features], y=df[var_dep_multiple])
+
+                # Predicción
+                #y_pred_mult = model_mult.predict(df[selected_features])
+                y_pred_mult = model_mult.predict(X)
+
+                # Coeficientes
+                r2 = model_mult.score(df[selected_features], df[var_dep_multiple])
+                r = np.sqrt(abs(r2))
+
+                # Mostramos métricas
+                st.write(f"**Coeficiente de determinación (R²):** {r2:.4f}")
+                st.write(f"**Coeficiente de correlación (R):** {r:.4f}")
+
+                # # Coeficientes del modelo
+                # st.subheader("Coeficientes del modelo")
+                # coef_df = pd.DataFrame({
+                #     "Variable": selected_features,
+                #     "Coeficiente": model_mult.coef_
+                # })
+                # st.dataframe(coef_df)
+
+                # DataFrame con predicciones
+                # pred_df_mult = df.copy()
+                # pred_df_mult['Predicciones'] = y_pred_mult
+                pred_df_mult = df_encoded.copy()
+                pred_df_mult['Predicciones'] = y_pred_mult
+
+                st.write("### Valores reales vs Predicciones")
+                st.dataframe(pred_df_mult[[var_dep_multiple, 'Predicciones']])
+
+                # Gráfico comparativo con colores diferenciados
+                st.write("### Gráfico comparativo de valores reales y predichos")
+                fig_mult, ax = mt.subplots(figsize=(10, 5))
+                sns.scatterplot(
+                    x=pred_df_mult.index, 
+                    y=pred_df_mult[var_dep_multiple], 
+                    label="Valor Real", 
+                    color="blue", 
+                    ax=ax
+                )
+                sns.scatterplot(
+                    x=pred_df_mult.index, 
+                    y=pred_df_mult['Predicciones'], 
+                    label="Predicción", 
+                    color="red", 
+                    ax=ax
+                )
+                ax.set_ylabel(var_dep_multiple)
+                ax.set_xlabel(selected_features)
+                st.pyplot(fig_mult)
+            else:
+                st.warning("Selecciona al menos una variable independiente.")
+
 
                 
 
