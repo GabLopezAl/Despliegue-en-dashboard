@@ -5,7 +5,11 @@ import streamlit as st
 import numpy as np
 import matplotlib.pyplot as mt
 import seaborn as sns
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from sklearn.linear_model import LinearRegression
+
 st.set_page_config(layout="wide")
 
 
@@ -65,7 +69,7 @@ def load_data():
     unique_categories_room = categorical_column_room.unique()
 
     # Codificar variables categóricas (One-Hot Encoding)
-    df_encoded = pd.get_dummies(df, drop_first=True)
+    df_encoded = pd.get_dummies(df, drop_first=False)
 
     return df, df_encoded, numeric_cols, text_cols, unique_categories_room, numeric_df
 
@@ -100,17 +104,17 @@ if View == "Información":
     # Mostrar una breve descripción
     st.markdown("""
     Localización y sitio: 
-La ciudad de Berlín está situada en el noroeste de Alemania, a orillas de los ríos Spree y Havel. Es la capital de la República Federal de Alemania y uno de los 16 Estados federales. Con sus más de 3,4 millones de habitantes, es la urbe más poblada de Alemania y la mayor de la Unión Europea.
+    La ciudad de Berlín está situada en el noroeste de Alemania, a orillas de los ríos Spree y Havel. Es la capital de la República Federal de Alemania y uno de los 16 Estados federales. Con sus más de 3,4 millones de habitantes, es la urbe más poblada de Alemania y la mayor de la Unión Europea.
 
-Hay en Berlín tres diferentes sitios del Patrimonio Mundial: los “Palacios y Parques de Potsdam y de Berlín” fueron los primeros en ser inscritos en la Lista del Patrimonio Mundial.  Esta propiedad fue ampliada dos veces, en primer lugar en 1992, y luego en 1999 – año en que también fue inscrita la Museumsinsel (Isla de los Museos). Asimismo, las seis Ciudades del Modernismo de Berlín adquirieron el estatus de Patrimonio Mundial en 2008.
-    
-Referencias históricas: 
-Ciudad jardín Falkenberg (1913-1916). Los arquitectos fueron Bruno Taut y Heinrich Tessenow, y el paisajista, Ludwig Lesser;
-Ciudad Schillerpark (1924-1930/1953-1957) concebida por los arquitectos Bruno Taut y Hans Hoffmann; su paisajista fue Walter Rossow);
-Ciudad Britz (1925-1930), diseñada por los arquitectos Bruno Taut y Martin Wagner; complementada por los paisajistas Leberecht Migge y Ottokar Wagler);
-Conjunto Carl Legien (1928-1930), cuyos arquitectos fueron Bruno Taut y Franz Hillinger);
-White City (1929-1931, proyectada por los arquitectos Otto Rudolf Salvisberg, Bruno Ahrends y Wilhelm Büning. Su paisajista fue Ludwig Lesser;
-Conjunto Siemensstadt (1929-1930), obra de los arquitectos Otto Bartning, Fred Forbart, Walter Gropius, Hugo Häring, Paul-Rudolf Henning y Hans Scharoun, y del paisajista Leberecht Migge).
+    Hay en Berlín tres diferentes sitios del Patrimonio Mundial: los “Palacios y Parques de Potsdam y de Berlín” fueron los primeros en ser inscritos en la Lista del Patrimonio Mundial.  Esta propiedad fue ampliada dos veces, en primer lugar en 1992, y luego en 1999 – año en que también fue inscrita la Museumsinsel (Isla de los Museos). Asimismo, las seis Ciudades del Modernismo de Berlín adquirieron el estatus de Patrimonio Mundial en 2008.
+        
+    Referencias históricas: 
+    Ciudad jardín Falkenberg (1913-1916). Los arquitectos fueron Bruno Taut y Heinrich Tessenow, y el paisajista, Ludwig Lesser;
+    Ciudad Schillerpark (1924-1930/1953-1957) concebida por los arquitectos Bruno Taut y Hans Hoffmann; su paisajista fue Walter Rossow);
+    Ciudad Britz (1925-1930), diseñada por los arquitectos Bruno Taut y Martin Wagner; complementada por los paisajistas Leberecht Migge y Ottokar Wagler);
+    Conjunto Carl Legien (1928-1930), cuyos arquitectos fueron Bruno Taut y Franz Hillinger);
+    White City (1929-1931, proyectada por los arquitectos Otto Rudolf Salvisberg, Bruno Ahrends y Wilhelm Büning. Su paisajista fue Ludwig Lesser;
+    Conjunto Siemensstadt (1929-1930), obra de los arquitectos Otto Bartning, Fred Forbart, Walter Gropius, Hugo Häring, Paul-Rudolf Henning y Hans Scharoun, y del paisajista Leberecht Migge).
     """)
 
 
@@ -246,14 +250,15 @@ elif View == "Modelado Predictivo":
             # Selección de variables independientes (múltiples)
             selected_features = st.multiselect(
                 label="Selecciona variables independientes",
-                options=numeric_cols,
-                default=numeric_cols[:2],
+                #options=df_encoded.columns,
+                options=df_encoded.select_dtypes(include=np.number).columns,
+                default=df_encoded.columns[:2],
                 key="multivar_indep"
             )
 
             var_dep_multiple = st.selectbox(
                 label="Selecciona variable dependiente",
-                options=numeric_cols,
+                options=df_encoded.columns,
                 key="multivar_dep"
             )
 
@@ -262,11 +267,10 @@ elif View == "Modelado Predictivo":
 
                 X = df_encoded[selected_features]
                 y = df_encoded[var_dep_multiple]
-                model_mult.fit(X, y)
 
 
                 # Entrenamos el modelo
-                #model_mult.fit(X=df[selected_features], y=df[var_dep_multiple])
+                model_mult.fit(X, y)
 
                 # Predicción
                 #y_pred_mult = model_mult.predict(df[selected_features])
@@ -321,81 +325,49 @@ elif View == "Modelado Predictivo":
                 st.warning("Selecciona al menos una variable independiente.")
 
 
-                
+        if check_box3:
+            st.subheader("Regresión Logística")
 
-                # Gráfico interactivo (Plotly)
-                # st.write("### Gráfico de dispersión interactivo")
-                # x_selected = st.sidebar.selectbox(label="X (para gráfica interactiva)", options=numeric_cols, key="x_disp")
-                # y_selected = st.sidebar.selectbox(label="Y (para gráfica interactiva)", options=numeric_cols, key="y_disp")
+            # Selección de variables
+            target_log = st.selectbox("Selecciona la variable objetivo (debe ser categórica)", options=text_cols, key="log_target")
+            features_log = st.multiselect("Selecciona variables predictoras (numéricas)", options=numeric_cols, key="log_features")
 
-                # figure2 = px.scatter(data_frame=df, x=x_selected, y=y_selected, title='Gráfico de Dispersión')
-                # st.plotly_chart(figure2)
+            if target_log and features_log:
+                # Eliminar filas con valores faltantes
+                df_log = df[[target_log] + features_log].dropna()
 
-                # # Visualizamos la grafica comparativa entre el total real y el total predecido
-                # sns.scatterplot(x='host_acceptance_rate', y='price', color="blue", data=entire)
-                # sns.lineplot(x='host_acceptance_rate', y='Predicciones', color="red", data=entire)
+                # Codificar variable objetivo si es categórica
+                y_log = pd.factorize(df_log[target_log])[0]
+                X_log = df_log[features_log]
 
-                # # Mostramos una tabla con las predicciones y el valor real
+                # Dividir en entrenamiento y prueba
+                X_train, X_test, y_train, y_test = train_test_split(X_log, y_log, test_size=0.2, random_state=42)
 
-                # # Insertamos la columna de predicciones en el DataFrame, a un lado de la variable dependiente
-                # entire.insert(32, 'Predicciones', y_pred)
+                # Modelo
+                model_log = LogisticRegression(max_iter=1000)
+                model_log.fit(X_train, y_train)
 
-                # # Mostramos las predicciones junto a la variable a predecir
-                # entire[["Predicciones", "price"]]
+                # Predicción
+                y_pred_log = model_log.predict(X_test)
 
+                # Métricas
+                acc = accuracy_score(y_test, y_pred_log)
+                cm = confusion_matrix(y_test, y_pred_log)
+                report = classification_report(y_test, y_pred_log, output_dict=True)
 
-                # #GRAPH 2 SCATTERPLOT
-                # x_selected = st.sidebar.selectbox(label="x", options=numeric_cols)
-                # y_selected = st.sidebar.selectbox(label="y", options=numeric_cols)
-                # figure2 = px.scatter(data_frame=numeric_df, x=x_selected, y=y_selected,
-                #                         title='Dispersiones')
-                # st.plotly_chart(figure2)
+                # Mostrar métricas
+                st.write(f"**Exactitud (Accuracy):** {acc:.4f}")
 
+                # Mostrar matriz de confusión
+                st.write("### Matriz de Confusión")
+                fig_cm, ax_cm = mt.subplots()
+                sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax_cm)
+                st.pyplot(fig_cm)
 
-        # Mostrar imagen y descripción solo si no están activados los checkboxes
-        # if not check_box1 and not check_box2 and not check_box3:
+                # Mostrar precisión y sensibilidad por clase
+                st.write("### Reporte de Clasificación (Precisión y Sensibilidad por clase)")
+                st.dataframe(pd.DataFrame(report).transpose())
+
+            else:
+                st.warning("Selecciona la variable objetivo y al menos una variable predictora.")
             
-
-        
-    
-        # #GRAPH 2 SCATTERPLOT
-        # x_selected = st.sidebar.selectbox(label="x", options=numeric_cols)
-        # y_selected = st.sidebar.selectbox(label="y", options=numeric_cols)
-        # figure2 = px.scatter(data_frame=numeric_df, x=x_selected, y=y_selected,
-        #                         title='Dispersiones')
-        # st.plotly_chart(figure2)
-
-#     # Vista número 3
-
-# elif View == "View3":
-#         # Generamos los encabezados para el dashboard
-#         st.title("TITANIC")
-#         st.header("Panel Principal")
-#         st.subheader("Scatter Plot")
-    
-#         Variable_cat = st.sidebar.selectbox(label="Varibale categórica", options=text_cols)
-#         Variable_num = st.sidebar.selectbox(label="Varibale numérica", options=numeric_cols)
-
-#         #GRAPH 3
-#         # Despiegue de un pie plot, definiendo las variables "X categoricas" y "Y numéricas"
-#         figure3= px.line(data_frame=data_features, x=data_features.index,
-#                             y=numerics_vars_selected, title=str('Features of passengers'),
-#                             width=1600, height=600)
-#         st.plotly_chart(figure3)
-
-#     # CONTENIDO DE LA VISTA 4
-# elif View == "View4":
-#     # Generamos los encabezados para el dashboard
-#         st.title("TITANIC")
-#         st.header("Panel Principal")
-#         st.subheader("Scatter Plot")
-    
-#         Variable_cat = st.sidebar.selectbox(label="Varibale categórica", options=text_cols)
-#         Variable_num = st.sidebar.selectbox(label="Varibale numérica", options=numeric_cols)
-
-#         figure4 = px.bar(data_frame=df, x=df[Variable_cat],
-#                         y=df[Variable_num],title=str('Features of') +' '+ 'Passengers')
-#         figure4.update_xaxes(automargin=True)
-#         figure4.update_yaxes(automargin=True)
-#         st.plotly_chart(figure4)
-
