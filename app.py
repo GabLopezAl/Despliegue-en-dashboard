@@ -69,14 +69,14 @@ def load_data():
     unique_categories_room = categorical_column_room.unique()
 
     # Codificar variables categóricas (One-Hot Encoding)
-    df_encoded = pd.get_dummies(df, drop_first=False)
+    #df_encoded = pd.get_dummies(df, drop_first=False)
 
-    return df, df_encoded, numeric_cols, text_cols, unique_categories_room, numeric_df
+    return df, numeric_cols, text_cols, unique_categories_room, numeric_df
 
     # return df, cols, cols_columns
 
 # Cargo los datos obtenidos de la funcion "load_data()"
-df, df_encoded, numeric_cols, text_cols, unique_categories_room, numeric_df = load_data()
+df, numeric_cols, text_cols, unique_categories_room, numeric_df = load_data()
 
 #Creacion del dashboard
 
@@ -185,10 +185,6 @@ elif View == "Modelado Predictivo":
 
         # Mostramos el mapa de calor
         if check_box1:
-            
-
-            # correlaciones_checkbox = st.sidebar.checkbox(label="Mapa de calor", key="correlaciones_checkbox")
-            # modelo = st.sidebar.checkbox(label="Modelo", key="modelo")
 
             # if correlaciones_checkbox:
 
@@ -247,101 +243,181 @@ elif View == "Modelado Predictivo":
         if check_box2:
             st.subheader("Regresión Lineal Múltiple")
 
-            # Selección de variables independientes (múltiples)
+            # Columnas numéricas para regresión
+            numeric_cols = df.select_dtypes(include=np.number).columns.tolist()
+
+            # Selección de variables independientes
             selected_features = st.multiselect(
                 label="Selecciona variables independientes",
-                #options=df_encoded.columns,
-                options=df_encoded.select_dtypes(include=np.number).columns,
-                default=df_encoded.columns[:2],
+                options=numeric_cols,
+                default=numeric_cols[:2],
                 key="multivar_indep"
             )
 
+            # Selección de variable dependiente
             var_dep_multiple = st.selectbox(
                 label="Selecciona variable dependiente",
-                options=df_encoded.columns,
+                options=numeric_cols,
                 key="multivar_dep"
             )
 
+            # Validación de selección
             if selected_features:
-                model_mult = LinearRegression()
+                if var_dep_multiple in selected_features:
+                    st.warning("La variable dependiente no debe estar entre las independientes.")
+                else:
+                    # Modelo de regresión
+                    model_mult = LinearRegression()
+                    X = df[selected_features]
+                    y = df[var_dep_multiple]
 
-                X = df_encoded[selected_features]
-                y = df_encoded[var_dep_multiple]
+                    # Entrenar modelo
+                    model_mult.fit(X, y)
 
+                    # Predicción
+                    y_pred_mult = model_mult.predict(X)
 
-                # Entrenamos el modelo
-                model_mult.fit(X, y)
+                    # Métricas
+                    r2 = model_mult.score(X, y)
+                    r = np.sqrt(abs(r2))
 
-                # Predicción
-                #y_pred_mult = model_mult.predict(df[selected_features])
-                y_pred_mult = model_mult.predict(X)
+                    st.write(f"**Coeficiente de determinación (R²):** {r2:.4f}")
+                    st.write(f"**Coeficiente de correlación (R):** {r:.4f}")
 
-                # Coeficientes
-                r2 = model_mult.score(df[selected_features], df[var_dep_multiple])
-                r = np.sqrt(abs(r2))
+                    # Coeficientes del modelo
+                    # coef_df = pd.DataFrame({
+                    #     "Variable": selected_features,
+                    #     "Coeficiente": model_mult.coef_
+                    # })
+                    # st.write("### Coeficientes del modelo")
+                    # st.dataframe(coef_df)
 
-                # Mostramos métricas
-                st.write(f"**Coeficiente de determinación (R²):** {r2:.4f}")
-                st.write(f"**Coeficiente de correlación (R):** {r:.4f}")
+                    # DataFrame con predicciones
+                    pred_df_mult = df.copy()
+                    pred_df_mult['Predicciones'] = y_pred_mult
 
-                # # Coeficientes del modelo
-                # st.subheader("Coeficientes del modelo")
-                # coef_df = pd.DataFrame({
-                #     "Variable": selected_features,
-                #     "Coeficiente": model_mult.coef_
-                # })
-                # st.dataframe(coef_df)
+                    st.write("### Valores reales vs Predicciones")
+                    st.dataframe(pred_df_mult[[var_dep_multiple, 'Predicciones']])
 
-                # DataFrame con predicciones
-                # pred_df_mult = df.copy()
-                # pred_df_mult['Predicciones'] = y_pred_mult
-                pred_df_mult = df_encoded.copy()
-                pred_df_mult['Predicciones'] = y_pred_mult
-
-                st.write("### Valores reales vs Predicciones")
-                st.dataframe(pred_df_mult[[var_dep_multiple, 'Predicciones']])
-
-                # Gráfico comparativo con colores diferenciados
-                st.write("### Gráfico comparativo de valores reales y predichos")
-                fig_mult, ax = mt.subplots(figsize=(10, 5))
-                sns.scatterplot(
-                    x=pred_df_mult.index, 
-                    y=pred_df_mult[var_dep_multiple], 
-                    label="Valor Real", 
-                    color="blue", 
-                    ax=ax
-                )
-                sns.scatterplot(
-                    x=pred_df_mult.index, 
-                    y=pred_df_mult['Predicciones'], 
-                    label="Predicción", 
-                    color="red", 
-                    ax=ax
-                )
-                ax.set_ylabel(var_dep_multiple)
-                ax.set_xlabel(selected_features)
-                st.pyplot(fig_mult)
+                    # Gráfico comparativo
+                    st.write("### Gráfico comparativo de valores reales y predichos")
+                    fig_mult, ax = mt.subplots(figsize=(10, 5))
+                    sns.scatterplot(
+                        x=pred_df_mult.index,
+                        y=pred_df_mult[var_dep_multiple],
+                        label="Valor Real",
+                        color="blue",
+                        ax=ax
+                    )
+                    sns.scatterplot(
+                        x=pred_df_mult.index,
+                        y=pred_df_mult['Predicciones'],
+                        label="Predicción",
+                        color="red",
+                        ax=ax
+                    )
+                    ax.set_ylabel(var_dep_multiple)
+                    ax.set_xlabel("Índice de muestra")
+                    st.pyplot(fig_mult)
             else:
                 st.warning("Selecciona al menos una variable independiente.")
+            # st.subheader("Regresión Lineal Múltiple")
+
+            # # Selección de variables independientes (múltiples)
+            # selected_features = st.multiselect(
+            #     label="Selecciona variables independientes",
+            #     #options=df_encoded.columns,
+            #     options=df.select_dtypes(include=np.number).columns,
+            #     default=df.columns[:2],
+            #     key="multivar_indep"
+            # )
+
+            # var_dep_multiple = st.selectbox(
+            #     label="Selecciona variable dependiente",
+            #     options=df.columns,
+            #     key="multivar_dep"
+            # )
+
+            # if selected_features:
+            #     model_mult = LinearRegression()
+
+            #     X = df[selected_features]
+            #     y = df[var_dep_multiple]
+
+
+            #     # Entrenamos el modelo
+            #     model_mult.fit(X, y)
+
+            #     # Predicción
+            #     #y_pred_mult = model_mult.predict(df[selected_features])
+            #     y_pred_mult = model_mult.predict(X)
+
+            #     # Coeficientes
+            #     r2 = model_mult.score(df[selected_features], df[var_dep_multiple])
+            #     r = np.sqrt(abs(r2))
+
+            #     # Mostramos métricas
+            #     st.write(f"**Coeficiente de determinación (R²):** {r2:.4f}")
+            #     st.write(f"**Coeficiente de correlación (R):** {r:.4f}")
+
+            #     # # Coeficientes del modelo
+            #     # st.subheader("Coeficientes del modelo")
+            #     # coef_df = pd.DataFrame({
+            #     #     "Variable": selected_features,
+            #     #     "Coeficiente": model_mult.coef_
+            #     # })
+            #     # st.dataframe(coef_df)
+
+            #     # DataFrame con predicciones
+            #     # pred_df_mult = df.copy()
+            #     # pred_df_mult['Predicciones'] = y_pred_mult
+            #     pred_df_mult = df.copy()
+            #     pred_df_mult['Predicciones'] = y_pred_mult
+
+            #     st.write("### Valores reales vs Predicciones")
+            #     st.dataframe(pred_df_mult[[var_dep_multiple, 'Predicciones']])
+
+            #     # Gráfico comparativo con colores diferenciados
+            #     st.write("### Gráfico comparativo de valores reales y predichos")
+            #     fig_mult, ax = mt.subplots(figsize=(10, 5))
+            #     sns.scatterplot(
+            #         x=pred_df_mult.index, 
+            #         y=pred_df_mult[var_dep_multiple], 
+            #         label="Valor Real", 
+            #         color="blue", 
+            #         ax=ax
+            #     )
+            #     sns.scatterplot(
+            #         x=pred_df_mult.index, 
+            #         y=pred_df_mult['Predicciones'], 
+            #         label="Predicción", 
+            #         color="red", 
+            #         ax=ax
+            #     )
+            #     ax.set_ylabel(var_dep_multiple)
+            #     ax.set_xlabel(selected_features)
+            #     st.pyplot(fig_mult)
+            # else:
+            #     st.warning("Selecciona al menos una variable independiente.")
 
 
         if check_box3:
             st.subheader("Regresión Logística")
 
             # Selección de variables
-            target_log = st.selectbox("Selecciona la variable objetivo (debe ser categórica)", options=text_cols, key="log_target")
+            target_log = st.selectbox("Selecciona la variable objetivo (debe ser categórica)", options=numeric_cols, key="log_target")
             features_log = st.multiselect("Selecciona variables predictoras (numéricas)", options=numeric_cols, key="log_features")
 
             if target_log and features_log:
                 # Eliminar filas con valores faltantes
-                df_log = df[[target_log] + features_log].dropna()
+                #df_log = df[[target_log] + features_log].dropna()
 
                 # Codificar variable objetivo si es categórica
-                y_log = pd.factorize(df_log[target_log])[0]
-                X_log = df_log[features_log]
+                # y_log = pd.factorize(df_log[target_log])[0]
+                # X_log = df_log[features_log]
 
                 # Dividir en entrenamiento y prueba
-                X_train, X_test, y_train, y_test = train_test_split(X_log, y_log, test_size=0.2, random_state=42)
+                X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
 
                 # Modelo
                 model_log = LogisticRegression(max_iter=1000)
