@@ -9,6 +9,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report, accuracy_score
 from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import precision_score
 
 st.set_page_config(layout="wide")
 
@@ -317,7 +319,7 @@ elif View == "Modelado Predictivo":
                         ax=ax
                     )
                     ax.set_ylabel(var_dep_multiple)
-                    ax.set_xlabel("Índice de muestra")
+                    ax.set_xlabel(selected_features)
                     st.pyplot(fig_mult)
             else:
                 st.warning("Selecciona al menos una variable independiente.")
@@ -409,41 +411,56 @@ elif View == "Modelado Predictivo":
             features_log = st.multiselect("Selecciona variables predictoras (numéricas)", options=numeric_cols, key="log_features")
 
             if target_log and features_log:
-                # Eliminar filas con valores faltantes
-                #df_log = df[[target_log] + features_log].dropna()
+                # Subconjunto del DataFrame con las columnas seleccionadas y eliminar NA
+                df_log = df[[target_log] + features_log].dropna()
 
                 # Codificar variable objetivo si es categórica
-                # y_log = pd.factorize(df_log[target_log])[0]
-                # X_log = df_log[features_log]
+                y_log = pd.factorize(df_log[target_log])[0]
+                X_log = df_log[features_log]
 
-                # Dividir en entrenamiento y prueba
-                X_train, X_test, y_train, y_test = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+                # División entrenamiento/prueba
+                X_train, X_test, y_train, y_test = train_test_split(X_log, y_log, test_size=0.2, random_state=42)
 
-                # Modelo
-                model_log = LogisticRegression(max_iter=1000)
-                model_log.fit(X_train, y_train)
+                # Escalamiento
+                escalar = StandardScaler()
+                X_train_scaled = escalar.fit_transform(X_train)
+                X_test_scaled = escalar.transform(X_test)
+
+                # Entrenar modelo
+                model = LogisticRegression()
+                model.fit(X_train_scaled, y_train)
 
                 # Predicción
-                y_pred_log = model_log.predict(X_test)
+                y_pred_log = model.predict(X_test_scaled)
 
                 # Métricas
                 acc = accuracy_score(y_test, y_pred_log)
                 cm = confusion_matrix(y_test, y_pred_log)
                 report = classification_report(y_test, y_pred_log, output_dict=True)
+                precision_gen = precision_score(y_test, y_pred_log, average="macro")
 
-                # Mostrar métricas
+                # Mostrar resultados
                 st.write(f"**Exactitud (Accuracy):** {acc:.4f}")
+                st.write(f"**Precisión:** {precision_gen:.4f}")
 
-                # Mostrar matriz de confusión
                 st.write("### Matriz de Confusión")
                 fig_cm, ax_cm = mt.subplots()
                 sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", ax=ax_cm)
                 st.pyplot(fig_cm)
 
-                # Mostrar precisión y sensibilidad por clase
                 st.write("### Reporte de Clasificación (Precisión y Sensibilidad por clase)")
-                st.dataframe(pd.DataFrame(report).transpose())
+                df_report = pd.DataFrame(report).transpose()
+
+                # Eliminar columnas no deseadas
+                df_report = df_report.drop(columns=["f1-score", "support"], errors="ignore")
+
+                # Eliminar filas no deseadas
+                df_report = df_report.drop(index=["macro avg", "weighted avg"], errors="ignore")
+
+                # Redondear resultados
+                df_report = df_report.round(4)
+
+                st.dataframe(df_report)
 
             else:
                 st.warning("Selecciona la variable objetivo y al menos una variable predictora.")
-            
